@@ -145,6 +145,7 @@ class Replay(object):
                 del self.play_data[-1]
 
     def data_from_lmza(self, lzma_string):
+        # [:-1] because osr appends a final comma to the lzma
         datastring = lzma.decompress(lzma_string, format=lzma.FORMAT_AUTO).decode('ascii')[:-1]
         events = [eventstring.split('|') for eventstring in datastring.split(',')]
         self.play_data = [ReplayEvent(int(event[0]), float(event[1]), float(event[2]), int(event[3])) for event in events]
