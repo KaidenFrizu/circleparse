@@ -53,8 +53,8 @@ self.replay_hash #String
 self.number_300s #Integer
 self.number_100s #Integer
 self.number_50s #Integer
-self.gekis #Integer
-self.katus #Integer
+self.gekis #Integer, MAX 300 in mania
+self.katus #Integer, 200 in mania
 self.misses #Integer
 self.score #Integer
 self.max_combo #Integer
@@ -69,7 +69,8 @@ ReplayEvent instances provide these fields
 
 ```python
 self.time_since_previous_action #Integer representing time in milliseconds
-self.x #x axis location
+self.x #x axis location, integer value of key press
 self.y #y axis location
 self.keys_pressed #bitwise sum of keys pressed, documented in OSR format page
 ```
+For osu!mania replay files, `self.x` refers to the integer value of the key press, `self.y` always returns `None`, and `self.keys_pressed` is the reverse binary equivalent of `self.x`. This process was based from Swan's [Respository](https://github.com/Swan/osuReplayParser).

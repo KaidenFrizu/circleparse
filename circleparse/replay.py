@@ -139,11 +139,22 @@ class Replay(object):
 
     def parse_play_data(self, replay_data):
         offset_end = self.offset+self.replay_length
-        if self.game_mode != GameMode.STD:
-            self.play_data = None
+        datastring = lzma.decompress(replay_data[self.offset:offset_end], format=lzma.FORMAT_AUTO).decode('ascii')[:-1]
+        events = [eventstring.split('|') for eventstring in datastring.split(',')]
+        if self.game_mode == GameMode.MANIA:
+            # Keys pressed in mania is based from the integer value of self.x converted to binary then reversed
+            def map_columns(event):
+                event = '{0:010b}'.format(event)[::-1] # '0110000000' means Key 1 and 2 (zero-indexing) were pressed
+                dict_mapping = {0:False, 1:False, 2:False, \
+                                3:False, 4:False, 5:False, \
+                                6:False, 7:False, 8:False, 9:False}
+                for i in range(10):
+                    if event[i] == '1':
+                        dict_mapping[i] = True
+                return dict_mapping
+
+            self.play_data = [ReplayEvent(int(event[0]), int(event[1]), None, map_columns(int(event[1]))) for event in events] # self.y is insignificant to o!m
         else:
-            datastring = lzma.decompress(replay_data[self.offset:offset_end], format=lzma.FORMAT_AUTO).decode('ascii')[:-1]
-            events = [eventstring.split('|') for eventstring in datastring.split(',')]
             self.play_data = [ReplayEvent(int(event[0]), float(event[1]), float(event[2]), int(event[3])) for event in events]
         self.offset = offset_end
 
@@ -163,7 +174,22 @@ class Replay(object):
         else:
             datastring = lzma.decompress(lzma_string, format=lzma.FORMAT_AUTO).decode('ascii')[:-1]
         events = [eventstring.split('|') for eventstring in datastring.split(',')]
-        self.play_data = [ReplayEvent(int(event[0]), float(event[1]), float(event[2]), int(event[3])) for event in events]
+
+        if self.game_mode == GameMode.MANIA:
+
+            def map_columns(event):
+                event = '{0:010b}'.format(event)[::-1]
+                dict_mapping = {0:False, 1:False, 2:False, \
+                                3:False, 4:False, 5:False, \
+                                6:False, 7:False, 8:False, 9:False}
+                for i in range(10):
+                    if event[i] == '1':
+                        dict_mapping[i] = True
+                return dict_mapping
+            
+            self.play_data = [ReplayEvent(int(event[0]), int(event[1]), None, map_columns(int(event[1]))) for event in events]
+        else:
+            self.play_data = [ReplayEvent(int(event[0]), float(event[1]), float(event[2]), int(event[3])) for event in events]
 
         if self.play_data[-1].time_since_previous_action == -12345:
             del self.play_data[-1]
@@ -200,6 +226,9 @@ def parse_replay(replay_data, pure_lzma, decompressed_lzma=False):
     Returns:
         A Replay object with the fields specific in the Replay's init method. If pure_lzma is False, all fields will
         be filled (nonnull). If pure_lzma is True, only the play_data will be filled.
+        If the Replay object GameMode is MANIA, self.keys_pressed returns as a dictionary of key columns with length 10.
+        Each key represents a column from 0 to 9 while the values are boolean that represents key press.
+        The length of the dictionary stays constant regardless of the keymode of the beatmap.
     """
 
     return Replay(replay_data, pure_lzma, decompressed_lzma)
